@@ -1,7 +1,0 @@
-Add lessons layer: what worked / what failed / what's needed
-
-- lessons/LESSONS-LEARNED.md: master record (6 wins, 5 failures, 6 next steps,
-  full decision log) — README now points here first
-- Header verdicts on source files: quillan_cuda_sm61_v2.cu marked REJECTED
-  (measured 0.59-1.0x, anti-example), quillan_cuda_sm61.cu marked PRODUCTION
-- README: lessons-first framing + lessons/ in repo layout
