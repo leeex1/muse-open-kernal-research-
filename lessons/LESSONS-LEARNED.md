@@ -69,7 +69,15 @@ Swept TILE_KEYS 8→1024, CHUNK_TOKENS 64→4096, PDL_MAX_T 8→256, scale modes
 submissions. Every "win" was either a byte-identical duplicate (edit didn't match) or slower.
 *Lesson: hash-check edits; if >10% behind the leader, change architecture, not parameters.*
 
-### 5. Bank padding by 4 — misaligned crash
+### 5. Split-K persistent GEMM — 0.01–0.16× (correct, catastrophically slow)
+Tried OKC's stream-K/persistent pattern (`sm61_gemm_sk.cu`) for skinny M where v2 loses
+to CPU. Parity 0.0000, but workspace traffic (nsplits×M×N fp32 partials + reduction
+re-reads) dwarfs the compute savings — e.g. M=64: 319 ms vs 2.95 ms (v2). Split-K pays
+off for GEMV (huge K, tiny N), already handled by the dedicated GEMV kernel.
+*Lesson: reduction-by-workspace is only worth it when the K dimension dominates and the
+output tile stays tiny.*
+
+### 6. Bank padding by 4 — misaligned crash
 Padded smem stride to 36 (32+4) for bank conflicts, then `int4` stores to odd rows faulted
 (36 % 16 ≠ 0). Fix: stride 48. *Lesson: padding must preserve the alignment of your widest access.*
 
