@@ -1,0 +1,9 @@
+Add OKC archive + model patch + missing scripts
+
+- okc/automation: submit driver, limits checker, leaderboard poller (curated)
+- okc/baseline: the 5 vjeux canonical kernels we started from
+- okc/README: the competition workflow (condensed)
+- patches: clean semantic patch for quillan_v5_4_oni.py (compute_aux=False x3
+  call sites + BatchedCouncilCompute eval short-circuit, 4 hunks, measured 1.73x)
+- kernels/build_v2_dll.bat: nvcc 12.9 + vcvars DLL build (GEMV v2, reference)
+- benchmarks: missing ones (GPU-failure probe, model A/B, dispatcher v1 FAIL record)

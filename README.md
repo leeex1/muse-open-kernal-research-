@@ -67,6 +67,8 @@ kernels/
 
 benchmarks/                     every .py that produced the numbers above
 results/                        measured tables + upgrade notes
+okc/                            contest archive: submit tooling, baselines, workflow
+patches/                        clean semantic patch for the model (compute_aux + swarm skip)
 guides/
 ├── pascal-sm61-optimization-guide.md   ⭐ the sauce: Pascal-specific tips & tricks
 ├── okc-contest-learnings.md            what the Open Kernel Challenge taught us

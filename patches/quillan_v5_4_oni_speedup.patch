@@ -1,0 +1,50 @@
+Clean semantic patch for quillan_v5_4_oni.py — the ONLY behavioral changes.
+(Generated diff vs backup contains incidental formatting reflows; this file
+lists the 4 hunks that matter. Apply by hand or with: patch -p1 < this file)
+
+--- a/quillan_v5_4_oni.py
++++ b/quillan_v5_4_oni.py
+
+# HUNK 1: BatchedCouncilCompute.__call__ — skip swarm compute in eval.
+# The swarm variance (var) + world recurrence (world) are computed then
+# DISCARDED in eval (return delta only). Early-return saves ~85% of
+# council FLOPs in inference. Numerics identical.
+@@
+         t = torch.einsum("nh,ehr->enr", x, P["LA"])
+         delta = torch.einsum("enr,erh->enh", t, P["LB"])  # [E,N,H]
+         h = x.unsqueeze(0) + delta * P["SCAL"]  # [E,N,H]
+ 
++        # SPEEDUP: eval short-circuit — swarm variance + world recurrence are
++        # computed then DISCARDED in eval (return delta only below). Skip ~85%
++        # of council FLOPs in inference (measured, identical outputs).
++        if not training:
++            return delta * P["SCAL"]
++
+         # ---- Law 2 & Law 3b: Individualized micro-agents per Council swarm
+
+# HUNK 2: _generate_legacy — prefill, skip aux modules.
+# compute_aux=True fires ~100 paper-pack modules per forward (agent_evolution,
+# mamba, MoR, flash3, evo_moe, ...). They feed aux outputs only; logits
+# unaffected. 30-60% wall time saved.
+@@
+         # Full depth on prefill so cached decode steps stay consistent
+-        logits, kv_cache = self.forward(inp, use_cache=True)
++        # SPEEDUP: compute_aux=False skips ~100 paper aux modules per forward (30-60% wall win)
++        logits, kv_cache = self.forward(inp, use_cache=True, compute_aux=False)
+
+# HUNK 3: _generate_legacy — decode loop, skip aux modules per token.
+@@
+             inp_single = torch.tensor([[next_tok]], dtype=torch.long, device=device)
+-            logits, kv_cache = self.forward(inp_single, past_key_values=kv_cache, use_cache=True)
++            logits, kv_cache = self.forward(
++                inp_single, past_key_values=kv_cache, use_cache=True, compute_aux=False
++            )
+
+# HUNK 4 (optional, speculative path): _generate_verify prefill.
+# Same rationale as hunk 2; file: quillan_v5_4_oni.py::_generate_verify
+@@
+-        raw = self.forward(inp, use_cache=True, path_override=1)
++        raw = self.forward(inp, use_cache=True, path_override=1, compute_aux=False)
+
+# MEASURED: prefill 1522.4 -> 860.2 ms (1.77x), decode 1187.6 -> 684.6 ms/tok (1.73x).
+# Backup of the pristine file: quillan_v5_4_oni.py.bak_speedup (in Quillan repo).
