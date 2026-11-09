@@ -1,7 +1,16 @@
 // quillan_cuda_sm61_v2.cu
-// UPGRADED BitNet GEMV + GEMM for Pascal sm_61 (GTX 1050 GP107).
+// ============================================================================
+// ⚠️  REJECTED EXPERIMENT — DO NOT USE IN PRODUCTION (measured 0.59-1.0x vs v1)
+// ============================================================================
+// This "upgrade" (split-K + smem X staging + unrolled guarded loop) was
+// BENCHMARKED SLOWER than the v1 GEMV it tried to replace (see
+// ../benchmarks/bench_gemv_ab.py, ../lessons/LESSONS-LEARNED.md §FAILED-1).
+// GEMV is bandwidth-bound; X fits in L2; the extra __syncthreads() and bound
+// checks cost more than they save. Kept ONLY as a documented anti-example.
+// PRODUCTION GEMV = quillan_cuda_sm61.cu (v1). Read before copying any of
+// the "optimizations" above into new work — they don't optimize anything.
 //
-// v2 upgrades vs v1 (quillan_cuda_sm61.cu):
+// Original (wrong) claims — preserved for provenance:
 //   1. SPLIT-K for GEMV: K split across warps+blocks, atomic-free warp reduction.
 //      Was: one warp per row streaming full K=8192 serially (latency-bound).
 //      Now: 4 warps each handle K/4, warp-shuffle reduce. ~4x on large K.

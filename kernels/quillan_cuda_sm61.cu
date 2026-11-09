@@ -1,5 +1,7 @@
 // ==============================================================================
 // QUILLAN-RONIN v5.4.0-ONI: PASCAL sm_61 NATIVE __dp4a TERNARY CUDA KERNEL
+// ✅ PRODUCTION GEMV (measured 15-20x vs CPU fp32 — do not replace with the
+// v2 split-K attempt, which measured SLOWER; see ../lessons/LESSONS-LEARNED.md)
 // Target Architecture: NVIDIA Pascal GP107 (GTX 1050 4GB, sm_61)
 // Instruction: __dp4a(int32_t srcA, int32_t srcB, int32_t c)
 // ==============================================================================

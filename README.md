@@ -4,6 +4,8 @@ Custom CUDA kernel upgrades for **NVIDIA Pascal sm_61 (GTX 1050 / GP107)** — p
 
 > **One-line version:** Modern PyTorch dropped sm_61 support, so on a GTX 1050 the *only* GPU compute path is custom CUDA. These kernels make it fast.
 
+> **Start here for the lessons:** [`lessons/LESSONS-LEARNED.md`](lessons/LESSONS-LEARNED.md) — what worked, what failed, what's needed. Everything in this repo exists to support those conclusions with code and numbers.
+
 ---
 
 ## 🏆 Results (measured on GTX 1050, 4 GB)
@@ -67,6 +69,7 @@ kernels/
 
 benchmarks/                     every .py that produced the numbers above
 results/                        measured tables + upgrade notes
+lessons/                        ⭐ what worked / what failed / what's needed (read first)
 okc/                            contest archive: submit tooling, baselines, workflow
 patches/                        clean semantic patch for the model (compute_aux + swarm skip)
 guides/
