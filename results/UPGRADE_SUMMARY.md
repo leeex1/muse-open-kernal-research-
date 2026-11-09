@@ -16,14 +16,20 @@ DLLs are the ONLY GPU compute path on this machine.
 
 ## Upgrades Landed
 
-### 1. Python quick wins (quillan_v5_4_oni.py)
+### 1. Python quick wins (quillan_v5_4_oni.py) — CORRECTED 2026-11-09
 - `compute_aux=False` at both decode call sites (generate prefill + loop):
   skips ~100 paper aux modules per forward (agent_evolution, mamba, moR, MoD...)
 - `BatchedCouncilCompute` eval short-circuit: swarm variance + 3-step world
   recurrence computed then discarded in eval → return `delta` immediately.
 
-**Measured: prefill 1.77x (1522→860ms), decode 1.73x (1188→685ms/tok).**
-Numerics unchanged (aux feeds aux outputs only; swarm path discarded in eval).
+**CORRECTION (interleaved A/B, same process — see benchmarks/bench_aux_ab.py):**
+- Swarm short-circuit alone: **0.99x** (no measurable win; output-identical by
+  construction, kept as dead-code elimination only).
+- `compute_aux=False`: **1.21x prefill / 1.12x decode** (6/6 rounds OFF faster).
+- ⚠️ **compute_aux=False CHANGES OUTPUTS** (top token 16165 vs 37770). The aux
+  blocks modify `x`, not just aux outputs. This is an opt-in BEHAVIOR CHANGE
+  for speed, NOT a free win. The old "1.73x, numerics unchanged" figures were
+  CPU-drift artifacts (same-model rounds varied 1067→1580 ms in one process).
 
 ### 2. GEMM v2 kernel (sm61_qgemm_v2.cu) — NEW
 File: `09 - Projects/projects/Chip design/quillan_sm61_kernels/sm61_qgemm_v2.cu`
@@ -74,11 +80,13 @@ module (key insight: per-call requant was 16ms vs 0.1ms kernel). Parity 0.0000.
 110 sequential round-trips cancel the kernel gains. The kernels are proven
 fast; the integration is transfer-bound because the model must stay on CPU
 (PyTorch GPU broken on sm_61). Dispatcher kept for portability (wins if the
-model ever lives on GPU), but default production path = Python wins only.
+model ever lives on GPU), but default production path = CPU + kernel wins only.
 
-**END-TO-END PRODUCTION NUMBERS (Python wins only):**
-- Prefill: 1522.4 → 860.2ms (**1.77x**)
-- Decode: 1187.6 → 684.6 ms/tok (**1.73x**, 0.84 → 1.46 tok/s)
+**CORRECTED END-TO-END NUMBERS (interleaved A/B, same process):**
+- Swarm short-circuit: **0.99x** (no win; identical outputs; kept as cleanup)
+- `compute_aux=False`: **1.21x prefill / 1.12x decode** — ⚠️ CHANGES OUTPUTS
+  (top token differs). Opt-in behavior change, not a free win.
+- (Earlier "1.73x/1.77x" figures were CPU-frequency drift artifacts.)
 
 ## How to use
 ```python
@@ -88,7 +96,7 @@ from quillan_v5_4_oni import QuillanRoninOni, QuillanOniConfig
 import quillan_cuda_dispatcher as D
 model = QuillanRoninOni(QuillanOniConfig()).eval()
 D.install(model)  # routes BitLinear through sm_61 DLLs
-tokens = model.generate([42, 7, 1337], max_tokens=64)  # compute_aux already False
+tokens = model.generate([42, 7, 1337], max_tokens=64)  # compute_aux=False: 1.12-1.21x but CHANGES outputs (documented)
 D.uninstall()
 ```
 

@@ -46,5 +46,8 @@ lists the 4 hunks that matter. Apply by hand or with: patch -p1 < this file)
 -        raw = self.forward(inp, use_cache=True, path_override=1)
 +        raw = self.forward(inp, use_cache=True, path_override=1, compute_aux=False)
 
-# MEASURED: prefill 1522.4 -> 860.2 ms (1.77x), decode 1187.6 -> 684.6 ms/tok (1.73x).
+# MEASURED (interleaved A/B, same process): prefill 1.21x, decode 1.12x.
+# WARNING: compute_aux=False CHANGES OUTPUTS (top token differs) — opt-in
+# behavior change. Swarm short-circuit: 0.99x, output-identical (kept as cleanup).
+# Earlier "1.77x/1.73x numerics unchanged" figures were CPU drift — discarded.
 # Backup of the pristine file: quillan_v5_4_oni.py.bak_speedup (in Quillan repo).

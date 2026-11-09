@@ -29,12 +29,15 @@ The dispatcher requantized 2M weights **per call** (16 ms) for a 0.1 ms kernel. 
 pre-packed int8 weights keyed on `weight._version` → 0.4 ms/call. Same kernel, 40× difference.
 *Rule: static data gets packed ONCE.*
 
-### 5. Killing dead compute (the biggest end-to-end win)
-- `compute_aux=True` fired ~100 paper-pack modules per token (agent_evolution, mamba, MoR…)
-  that feed aux outputs only → `compute_aux=False` in decode: **30–60% wall time saved**
+### 5. Killing dead compute — HALF true (corrected!)
 - `BatchedCouncilCompute` computed swarm variance + 3-step world recurrence in eval, then
-  **threw it away** (`return delta`) → early return: **~85% of council FLOPs saved**
-- Measured end-to-end: **1.73× decode, 1.77× prefill**, numerics identical (parity 0.0000)
+  **threw it away** (`return delta`) → early return. Interleaved A/B: **0.99×** (no win,
+  outputs identical by construction). Kept as dead-code cleanup, NOT a speedup.
+- `compute_aux=False` skips ~100 paper modules: **1.21× prefill / 1.12× decode** interleaved.
+  BUT it **CHANGES OUTPUTS** (aux blocks modify `x`; top token differs). Opt-in tradeoff,
+  documented in the patch — NOT "numerics unchanged" as first claimed.
+- ⚠️ The original "1.73×/1.77×" numbers were CPU-frequency DRIFT (same-model rounds varied
+  1067→1580 ms in one process). Only interleaved same-process A/B counts.
 
 ### 6. v1 GEMV was already optimal — recognize and keep
 The original warp-per-row `__dp4a` GEMV streams weights at near-bandwidth (15–20× vs CPU fp32).
@@ -135,5 +138,6 @@ evenly. Only worth it if launch/tail overhead shows up in profiles — measure f
 | GEMM output type | FP32 (not FP16) | Pascal FP16 = 1/64 rate |
 | Dispatcher default | Decode→CPU, prefill→GEMM v2 | End-to-end A/B: dispatch hurts decode (PCIe tax) |
 | Weight handling in dispatch | Cache per module (`_version` key) | 16ms→0.4ms/call measured |
-| compute_aux in decode | False (patched) | 1.73× end-to-end, logits unchanged |
-| Swarm in eval | Skipped (patched) | 85% of council FLOPs were discarded work |
+| compute_aux in decode | False (patched, OPT-IN) | 1.12–1.21× interleaved — ⚠️ CHANGES OUTPUTS (top token differs) |
+| Swarm in eval | Skipped (patched) | 0.99× interleaved — no win, identical outputs, kept as cleanup |
+| Measurement discipline | Interleaved A/B, same process | Earlier 1.73× claims were CPU drift (same-model rounds varied ±50%) |

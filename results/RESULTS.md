@@ -71,19 +71,22 @@ Split-K + smem X staging + unrolled loop vs v1 GEMV. **0.59–1.00× (slower or 
 
 (Without weight caching: 0.6× / 0.2× — requantizing 2M weights per call was the killer.)
 
-## 6. Full model, 593M params (`bench_full_model.py`, `bench_old_only.py`, `bench_prefill128.py`)
+## 6. Full model, 593M params — CORRECTED with interleaved A/B (bench_aux_ab.py, bench_interleaved.py)
 
-| Config | Prefill | Decode | tok/s |
-|---|---|---|---|
-| Unpatched (compute_aux on, swarm waste) | 1522 ms (T=32) | 1188 ms/tok | 0.84 |
-| Python wins only (compute_aux off + swarm skip) | 860 ms | 685 ms/tok | **1.46** |
-| + DLL dispatch (prefill path) | 904 ms (T=32) | 686 ms/tok | 1.46 |
-| Prefill T=128, CPU-only | 1119 ms | — | — |
-| Prefill T=128, DLL-dispatched | 1140 ms | — | parity 0.0000 |
+> ⚠️ The earlier "860/685 ms (1.73×)" row below was CPU-frequency drift — discarded.
+> Interleaved same-process measurements (the only trustworthy kind on this box):
 
-**End-to-end verdicts:**
-- Python wins: **1.73× decode / 1.77× prefill** ✅ shipped
-- DLL dispatch: **0.98× end-to-end** (no win) ❌ — 110 sequential PCIe round-trips cancel kernel gains because the model must stay on CPU (PyTorch GPU broken on sm_61). Kernels remain staged for GPU-resident runtimes.
+| Config | Prefill | Decode |
+|---|---|---|
+| `compute_aux=True` vs `False` (interleaved, n=3×2) | 1333.6 → 1104.7 ms (**1.21×**) | 1033.8 → 925.9 ms (**1.12×**) |
+| Swarm short-circuit (interleaved old/new files) | 1301.6 → 1311.0 ms (**0.99×**) | — |
+| DLL dispatch end-to-end (T=128 prefill) | 1119 → 1140 ms (**0.98×**) | parity 0.0000 |
+
+**`compute_aux=False` CHANGES OUTPUTS** (top token 16165 vs 37770) — opt-in behavior
+change for speed, not a free win. Swarm skip is output-identical.
+
+**Previous (drift-affected, DISCARD):** 1522→860 pref / 1188→685 dec — same-model
+rounds varied 1067→1580 ms within one process. Never trust non-interleaved CPU benches.
 
 ## 7. OKC standings (Nov 2026 challenge, 86 submissions)
 

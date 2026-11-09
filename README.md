@@ -16,8 +16,8 @@ Custom CUDA kernel upgrades for **NVIDIA Pascal sm_61 (GTX 1050 / GP107)** — p
 | **GEMV decode** vs CPU fp32 | CPU `F.linear` | `__dp4a` DLL | **15–20×** |
 | **BitLinear module** (1024→2048, decode) | CPU 15.79 ms | DLL 0.41 ms | **38.8×** |
 | **BitLinear module** (prefill M=128) | CPU 9.97 ms | GEMM v2 2.60 ms | **3.8×** |
-| **Full model decode** (593M params) | 1188 ms/tok | 685 ms/tok | **1.73×** |
-| **Full model prefill** (T=32) | 1522 ms | 860 ms | **1.77×** |
+| **Full model prefill** (interleaved A/B) | aux on 1334 ms | aux off 1105 ms | **1.21×** ⚠️ changes outputs |
+| **Full model decode** (interleaved A/B) | aux on 1034 ms | aux off 926 ms | **1.12×** ⚠️ changes outputs |
 
 Full numbers: [`results/RESULTS.md`](results/RESULTS.md) · [`results/UPGRADE_SUMMARY.md`](results/UPGRADE_SUMMARY.md)
 
