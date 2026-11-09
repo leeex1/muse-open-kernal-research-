@@ -15,7 +15,24 @@ v2 = `int4` vectorized loads + register-prefetch double buffering + FP32 epilogu
 | 512 | 4096 | 4096 | 34.54 | 7.14 | **4.84×** |
 | 1024 | 4096 | 4096 | 75.57 | 15.29 | **4.94×** |
 
-## 2. GEMM v1 vs CPU fp32 (`bench_kernel_baseline.py`)
+## 2. Split-K persistent GEMM (`bench_sk.py`) — REJECTED (correct, slow)
+
+Persistent grid (5 CTAs) + K-split + workspace reduction, targeting M=1..64 where v2 loses to CPU.
+
+| M | K | N | v2 (ms) | SK (ms) | CPU (ms) | Parity | SK/v2 |
+|---|---|---|---------|---------|----------|--------|-------|
+| 1 | 1024 | 1024 | 0.134 | 2.474 | 4.907 | 0.0000 | 0.05× |
+| 1 | 4096 | 1024 | 0.790 | 4.967 | 1.193 | 0.0000 | 0.16× |
+| 8 | 1024 | 1024 | 0.168 | 2.239 | 0.997 | 0.0000 | 0.07× |
+| 8 | 4096 | 4096 | 2.875 | 49.14 | 17.40 | 0.0000 | 0.06× |
+| 32 | 4096 | 4096 | 2.124 | 81.44 | 14.73 | 0.0000 | 0.03× |
+| 64 | 4096 | 4096 | 2.950 | 319.1 | 16.50 | 0.0000 | 0.01× |
+
+Workspace traffic (nsplits×M×N fp32 partials + reduction re-reads) dwarfs the compute savings.
+Split-K pays off for GEMV (huge K, tiny N) — already handled by the dedicated `quillan_cuda_sm61` kernel.
+Kept as `kernels/sm61_gemm_sk.cu` (header stamped ⚠️ REJECTED).
+
+## 3. GEMM v1 vs CPU fp32 (`bench_kernel_baseline.py`)
 
 | M | K | N | GPU v1 (ms) | CPU (ms) | Winner |
 |---|---|---|-------------|----------|--------|

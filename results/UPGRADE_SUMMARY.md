@@ -51,6 +51,14 @@ File: `kernels/quillan_cuda_sm61_v2.cu` (kept for reference, NOT production)
 - Reason: GEMV is bandwidth-bound; X fits in L2; extra syncs hurt.
 - **Production GEMV = v1** (`quillan_cuda_sm61.dll`), already 15-20x vs CPU.
 
+### 3b. Split-K persistent GEMM — REJECTED (correct, catastrophically slow)
+File: `kernels/sm61_gemm_sk.cu` (kept for reference, NOT production)
+- Persistent grid (5 CTAs) + K-split + workspace reduction for skinny M:
+  **0.01-0.16x vs v2** (parity 0.0000, so correct but useless here).
+- Reason: workspace traffic (nsplits×M×N fp32 partials + reduction re-reads)
+  dwarfs compute savings. Split-K pays off for GEMV (huge K, tiny N) only.
+- See `benchmarks/bench_sk.py` + `results/RESULTS.md` §2.
+
 ### 4. DLL dispatcher (quillan_cuda_dispatcher.py) — NEW
 Monkey-patches `BitLinear.forward`: prefill (M≥64, ≥1M elems) → GEMM v2;
 decode (M<64) → CPU STE fallback (measured: 110 sequential PCIe round-trips
