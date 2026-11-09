@@ -77,6 +77,14 @@ off for GEMV (huge K, tiny N), already handled by the dedicated GEMV kernel.
 *Lesson: reduction-by-workspace is only worth it when the K dimension dominates and the
 output tile stays tiny.*
 
+### 5b. KV cache preallocation — 2.7× SLOWER (reverted)
+Replaced per-token `torch.cat` with in-place writes into a preallocated buffer + views
+(no copy, no realloc). Measured 2344/1377 ms vs 860/685 — 2.7× slower! The strided views
+(non-contiguous [B,H,n,D]) make PyTorch CPU SDPA take a slow path (internal materialization
+per call), while `cat` produced contiguous tensors SDPA handles natively.
+*Lesson: view-based KV only wins with a custom kernel that understands the layout. With
+library SDPA, contiguous wins. Reverted; `torch.cat` restored.*
+
 ### 6. Bank padding by 4 — misaligned crash
 Padded smem stride to 36 (32+4) for bank conflicts, then `int4` stores to odd rows faulted
 (36 % 16 ≠ 0). Fix: stride 48. *Lesson: padding must preserve the alignment of your widest access.*
